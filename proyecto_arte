@@ -1,0 +1,86 @@
+from twilio.rest import Client
+from bs4 import BeautifulSoup
+from urllib.request import urlopen
+import requests
+import random
+import re
+
+#--------------------
+
+#Función que scrapea la lista de artistas de wikipedia y devuelve uno con el link de su pagina 
+
+def wiki():
+    url = 'https://es.wikipedia.org/wiki/Portal:Pintura/Artistas'
+    html = urlopen(url) 
+    soup = BeautifulSoup(html, 'html.parser')
+
+    li = soup.select(" tbody > tr > td > ul > li > a")
+
+    lista = []
+    for link in li:
+        i=(link.get('href'))
+        i= i.replace("/wiki/","https://es.wikipedia.org/wiki/")
+        lista.append(i)
+
+    lista.remove("/w/index.php?title=Lu_Jane&action=edit&redlink=1")
+    lista.remove("/w/index.php?title=Joan_Tuset&action=edit&redlink=1")
+
+    random_link = random.choice(lista)
+    return random_link
+
+link= wiki()
+
+
+#--------------------
+
+#Funcion que scrapea y devuelve el nombre del artista
+
+def nombre():
+    pagina = urlopen(link)
+    soup=BeautifulSoup(pagina, "html.parser")
+    nombre_artista = str(soup.find("h1"))
+    nombre_artista= re.sub('<[^<]+?>', '', nombre_artista)
+    return nombre_artista
+
+nombre_artista= nombre()
+
+#---------------------
+
+#Funcion que scrapea y devuelve el resumen de wikipedia sobre el artista
+
+def resumen():
+    pagina = urlopen(link)
+    soup=BeautifulSoup(pagina, "html.parser")
+
+    for div in soup.find_all(class_="mw-parser-output"):
+        contenido = div.find("p").text
+    return str(contenido)
+
+resumen= resumen()
+
+#---------------------
+
+#Conexion con Twillio 
+
+account_sid = 'XXXXXXXXXXX'
+auth_token = 'XXXXXXXXXX'
+
+#---------------------
+
+#Contenido del mensaje de wpp 
+
+contenido_wpp = "Hola! El/La artista de hoy es {}.\n{}Si queres saber un poco mas, entra al link: {}".format(nombre_artista, resumen, link)
+
+#---------------------
+
+#Envío del mensaje
+
+client = Client(account_sid, auth_token)
+
+message = client.messages.create(
+                              body= contenido_wpp,
+                              from_='whatsapp:XXXXXXXXXX',
+                              to='whatsapp:XXXXXXXX'
+                          )
+
+print(message.sid)
